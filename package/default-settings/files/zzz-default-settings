@@ -1,0 +1,52 @@
+#!/bin/sh
+
+# 设置语言
+uci set luci.main.lang=zh_cn
+uci commit luci
+
+# 设置时区
+uci set system.@system[0].timezone=CST-8
+uci set system.@system[0].zonename=Asia/Shanghai
+uci commit system
+
+#自动挂载
+uci set fstab.@global[0].anon_mount=1
+uci commit fstab
+
+ln -sf /sbin/ip /usr/bin/ip
+
+# 修改软件源
+sed -i 's/downloads.openwrt.org/openwrt.proxy.ustclug.org/g' /etc/opkg/distfeeds.conf
+sed -i 's/http/https/g' /etc/opkg/distfeeds.conf
+sed -i "s/# //g" /etc/opkg/distfeeds.conf
+
+# 设置 admin 密码为：admin
+# sed -i 's/root::0:0:99999:7:::/root:$1$wEehtjxj$YBu4quNfVUjzfv8p/PBo5.:0:0:99999:7:::/g' /etc/shadow
+
+# 设置 ip
+# uci set network.lan.ipaddr='192.168.56.1'
+# uci set network.lan.netmask='255.255.255.0'
+# uci commit network
+
+# iptables 转发
+sed -i '/REDIRECT --to-ports 53/d' /etc/firewall.user
+echo "iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-ports 53" >> /etc/firewall.user
+echo "iptables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-ports 53" >> /etc/firewall.user
+
+# 开启 wifi
+sed -i '/option disabled/d' /etc/config/wireless
+sed -i '/set wireless.radio${devidx}.disabled/d' /lib/wifi/mac80211.sh
+
+# 设置版本信息
+# sed -i '/DISTRIB_REVISION/d' /etc/openwrt_release
+# echo "DISTRIB_REVISION='19.07-SNAPSHOT'" >> /etc/openwrt_release
+# sed -i '/DISTRIB_DESCRIPTION/d' /etc/openwrt_release
+# echo "DISTRIB_DESCRIPTION='OpenWrt '" >> /etc/openwrt_release
+
+sed -i '/log-facility/d' /etc/dnsmasq.conf
+echo "log-facility=/dev/null" >> /etc/dnsmasq.conf
+
+rm -rf /tmp/luci-modulecache/
+rm -f /tmp/luci-indexcache
+
+exit 0
